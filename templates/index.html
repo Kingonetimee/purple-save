@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PurpleSave</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+
+    <main class="page">
+        <section class="hero-card">
+
+            <div class="logo">
+                <div class="logo-icon">▶</div>
+                <span>PurpleSave</span>
+            </div>
+            <nav class="nav-links">
+    <a href="/">Home</a>
+    <a href="/privacy">Privacy</a>
+    <a href="/terms">Terms</a>
+    <a href="/contact">Contact</a>
+</nav>
+
+            <h1>Download Your Videos Easily</h1>
+
+            <p class="subtitle">
+                Paste your TikTok or Instagram video link and download videos you own or have permission to use.
+            </p>
+
+            <form method="POST" class="download-form" onsubmit="showLoading()">
+                <div class="input-group">
+                    <input 
+                        type="text" 
+                        name="video_url" 
+                        placeholder="Paste your video link here..."
+                    >
+                </div>
+
+                <label class="checkbox">
+                    <input type="checkbox" name="permission" value="yes">
+                    <span>I confirm I own this video or have permission to download it.</span>
+                </label>
+
+                <button type="submit" id="submitBtn">
+                    Load Video
+                </button>
+            </form>
+
+            <div id="loading" class="loading hidden">
+                <div class="spinner"></div>
+                <p>Processing your video...</p>
+            </div>
+
+            {% if error %}
+                <div class="message error">
+                    {{ error }}
+                </div>
+            {% endif %}
+
+            {% if video_info %}
+                <div class="preview-card">
+
+                    {% if video_info.thumbnail %}
+                        <img 
+                            src="{{ video_info.thumbnail }}" 
+                            alt="Video thumbnail" 
+                            class="preview-thumbnail"
+                        >
+                    {% endif %}
+
+                    <div class="preview-content">
+                        <h2>{{ video_info.title }}</h2>
+
+                        <p>
+                            <strong>Creator:</strong> {{ video_info.uploader }}
+                        </p>
+
+                        {% if video_info.duration %}
+                            <p>
+                                <strong>Duration:</strong> {{ video_info.duration }} seconds
+                            </p>
+                        {% endif %}
+
+                        {% if download_file %}
+                            <a href="/download/{{ download_file }}" class="download-btn">
+                                Download Video
+                            </a>
+                        {% endif %}
+                    </div>
+
+                </div>
+            {% endif %}
+
+            <div class="ads-box">
+                Google Ads Space
+            </div>
+
+        </section>
+    </main>
+
+    <script>
+        function showLoading() {
+            document.getElementById("loading").classList.remove("hidden");
+            document.getElementById("submitBtn").innerText = "Please wait...";
+        }
+    </script>
+
+</body>
+</html>
