@@ -1,4 +1,5 @@
 import os
+import re
 import uuid
 import time
 import yt_dlp
@@ -28,7 +29,7 @@ limiter = Limiter(
 # AUTO DELETE OLD FILES
 # =========================
 
-FILE_LIFETIME = 60 * 5  # 5 minutes
+FILE_LIFETIME = 60 * 30  # 30 minutes
 
 
 def cleanup_old_files():
@@ -54,6 +55,22 @@ def cleanup_old_files():
 
 
 # =========================
+# EXTRACT URL FROM TEXT
+# =========================
+
+def extract_url(text):
+
+    url_pattern = r"(https?://[^\s]+)"
+
+    match = re.search(url_pattern, text)
+
+    if match:
+        return match.group(0)
+
+    return None
+
+
+# =========================
 # MAIN ROUTE
 # =========================
 
@@ -69,11 +86,14 @@ def index():
 
     if request.method == "POST":
 
-        video_url = request.form.get("video_url")
+        video_text = request.form.get("video_url")
         permission = request.form.get("permission")
 
+        # Extract actual URL
+        video_url = extract_url(video_text)
+
         if not video_url:
-            error = "Please paste a video link."
+            error = "Please paste a valid TikTok or Instagram link."
 
         elif permission != "yes":
             error = "You must confirm ownership or permission."
@@ -98,7 +118,7 @@ def index():
                     "quiet": True,
                     "noplaylist": True,
 
-                    # MAX FILE SIZE ~100MB
+                    # Max file size
                     "max_filesize": 100 * 1024 * 1024,
                 }
 
@@ -146,6 +166,11 @@ def download(filename):
         as_attachment=True
     )
 
+
+# =========================
+# STATIC PAGES
+# =========================
+
 @app.route("/privacy")
 def privacy():
     return render_template("privacy.html")
@@ -159,6 +184,7 @@ def terms():
 @app.route("/contact")
 def contact():
     return render_template("contact.html")
+
 
 # =========================
 # RUN APP
