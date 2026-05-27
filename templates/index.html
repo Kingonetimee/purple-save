@@ -71,11 +71,19 @@
                         >
                     {% endif %}
 
-                    <div 
-                        id="fallbackThumb" 
-                        class="fallback-thumb" 
-                        style="{% if video_info.thumbnail %}display: none;{% else %}display: flex;{% endif %}"
-                    >
+                    {% if video_info.thumbnail %}
+                        <div 
+                            id="fallbackThumb" 
+                            class="fallback-thumb" 
+                            style="display: none;"
+                        >
+                    {% else %}
+                        <div 
+                            id="fallbackThumb" 
+                            class="fallback-thumb" 
+                            style="display: flex;"
+                        >
+                    {% endif %}
                         <div>
                             <div class="fallback-icon">▶</div>
                             <p>Preview thumbnail unavailable</p>
