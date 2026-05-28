@@ -98,6 +98,9 @@ def index():
         elif permission != "yes":
             error = "You must confirm ownership or permission."
 
+        elif "/photo/" in video_url:
+            error = "TikTok photo/slideshow posts are not supported yet. Please paste a video link."    
+
         elif "tiktok.com" not in video_url and "instagram.com" not in video_url:
             error = "Only TikTok and Instagram links are supported."
 
