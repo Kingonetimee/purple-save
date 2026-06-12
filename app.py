@@ -15,11 +15,19 @@ DOWNLOAD_FOLDER = "downloads"
 
 os.makedirs(DOWNLOAD_FOLDER, exist_ok=True)
 
+# =========================
+# RATE LIMITER
+# =========================
+
 limiter = Limiter(
     get_remote_address,
     app=app,
     default_limits=["10 per minute"]
 )
+
+# =========================
+# AUTO DELETE OLD FILES
+# =========================
 
 FILE_LIFETIME = 60 * 30  # 30 minutes
 
@@ -41,6 +49,10 @@ def cleanup_old_files():
                     print(e)
 
 
+# =========================
+# EXTRACT URL FROM TEXT
+# =========================
+
 def extract_url(text):
     if not text:
         return None
@@ -54,9 +66,15 @@ def extract_url(text):
     return None
 
 
+# =========================
+# PLATFORM CHECK
+# =========================
+
 def is_supported_url(url):
     supported_domains = [
         "tiktok.com",
+        "vm.tiktok.com",
+        "vt.tiktok.com",
         "instagram.com",
         "youtube.com",
         "youtu.be",
@@ -66,8 +84,21 @@ def is_supported_url(url):
         "x.com"
     ]
 
-    return any(domain in url for domain in supported_domains)
+    return any(domain in url.lower() for domain in supported_domains)
 
+
+def is_youtube_url(url):
+    url = url.lower()
+
+    return (
+        "youtube.com" in url
+        or "youtu.be" in url
+    )
+
+
+# =========================
+# MAIN ROUTE
+# =========================
 
 @app.route("/", methods=["GET", "POST"])
 @limiter.limit("5 per minute")
@@ -90,7 +121,7 @@ def index():
         elif permission != "yes":
             error = "You must confirm ownership or permission."
 
-        elif "/photo/" in video_url:
+        elif "/photo/" in video_url.lower():
             error = "Photo/slideshow posts are not supported yet. Please paste a video link."
 
         elif not is_supported_url(video_url):
@@ -105,14 +136,49 @@ def index():
             )
 
             try:
+                # =========================
+                # GENERAL OPTIONS
+                # =========================
+
                 ydl_options = {
-                    "format": "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best",
-                    "merge_output_format": "mp4",
                     "outtmpl": output_template,
                     "quiet": True,
                     "noplaylist": True,
+                    "merge_output_format": "mp4",
                     "max_filesize": 100 * 1024 * 1024,
+
+                    "http_headers": {
+                        "User-Agent": (
+                            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                            "AppleWebKit/537.36 (KHTML, like Gecko) "
+                            "Chrome/120.0.0.0 Safari/537.36"
+                        )
+                    },
                 }
+
+                # =========================
+                # YOUTUBE-SPECIFIC OPTIONS
+                # =========================
+
+                if is_youtube_url(video_url):
+                    ydl_options.update({
+                        "format": "best[ext=mp4]/best",
+
+                        "extractor_args": {
+                            "youtube": {
+                                "player_client": ["android"]
+                            }
+                        },
+                    })
+
+                else:
+                    ydl_options.update({
+                        "format": "best[ext=mp4]/best"
+                    })
+
+                # =========================
+                # DOWNLOAD VIDEO
+                # =========================
 
                 with yt_dlp.YoutubeDL(ydl_options) as ydl:
                     info = ydl.extract_info(
@@ -127,14 +193,32 @@ def index():
                         "duration": info.get("duration"),
                     }
 
-                download_file = f"{file_id}.mp4"
+                # =========================
+                # FIND DOWNLOADED FILE
+                # =========================
+
+                possible_files = [
+                    file
+                    for file in os.listdir(DOWNLOAD_FOLDER)
+                    if file.startswith(file_id)
+                ]
+
+                if not possible_files:
+                    error = "Download finished but file was not found."
+
+                else:
+                    downloaded_filename = possible_files[0]
+                    download_file = downloaded_filename
 
             except Exception as e:
                 print("YT-DLP ERROR:")
                 print(type(e))
                 print(e)
 
-                error = "Video could not be downloaded. It may be private, restricted, unsupported, or blocked in this region."
+                error = (
+                    "Video could not be downloaded. "
+                    "It may be private, restricted, blocked, or unsupported."
+                )
 
     return render_template(
         "index.html",
@@ -144,6 +228,10 @@ def index():
     )
 
 
+# =========================
+# DOWNLOAD ROUTE
+# =========================
+
 @app.route("/download/<filename>")
 def download(filename):
     return send_from_directory(
@@ -152,6 +240,10 @@ def download(filename):
         as_attachment=True
     )
 
+
+# =========================
+# STATIC PAGES
+# =========================
 
 @app.route("/privacy")
 def privacy():
@@ -167,6 +259,10 @@ def terms():
 def contact():
     return render_template("contact.html")
 
+
+# =========================
+# RUN APP
+# =========================
 
 if __name__ == "__main__":
     app.run(debug=True)
